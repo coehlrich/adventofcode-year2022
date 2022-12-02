@@ -40,7 +40,7 @@ public class Main {
                     .findFirst();
 
             if (day.isEmpty()) {
-                System.out.println("Day " + day + " is not added yet.");
+                System.out.println("Day " + dayInt + " is not added yet.");
                 return;
             }
 
