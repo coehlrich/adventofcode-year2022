@@ -9,11 +9,6 @@ import com.coehlrich.adventofcode.Result;
 public class Main implements Day {
 
     @Override
-    public int day() {
-        return 1;
-    }
-
-    @Override
     public Result execute(String input) {
         String[] elves = input.split("\n\n");
         int[][] calories = Stream.of(elves).map((string) -> string.lines().mapToInt(Integer::parseInt).toArray())

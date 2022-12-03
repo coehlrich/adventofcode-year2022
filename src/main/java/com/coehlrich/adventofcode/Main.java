@@ -1,9 +1,5 @@
 package com.coehlrich.adventofcode;
 
-import java.util.Optional;
-import java.util.ServiceLoader;
-import java.util.ServiceLoader.Provider;
-
 import joptsimple.ArgumentAcceptingOptionSpec;
 import joptsimple.OptionException;
 import joptsimple.OptionParser;
@@ -18,26 +14,25 @@ public class Main {
         ArgumentAcceptingOptionSpec<ImportType> importType = parser.accepts("input-type").withRequiredArg().required()
                 .withValuesConvertedBy(new CaseInsensitiveEnumArg<>(ImportType.class));
         ArgumentAcceptingOptionSpec<String> inputOption = parser.accepts("input").withRequiredArg().required();
+        int dayInt = -1;
         try {
             OptionSet options = parser.parse(args);
-            int dayInt = options.valueOf(dayOption);
+            dayInt = options.valueOf(dayOption);
             String input = options.valueOf(importType).getInput(dayInt, options.valueOf(inputOption));
 
-            Optional<Day> day = ServiceLoader.load(Day.class).stream().map(Provider::get)
-                    .filter((dayInstance) -> dayInstance.day() == dayInt)
-                    .findFirst();
-
-            if (day.isEmpty()) {
-                System.out.println("Day " + dayInt + " is not added yet.");
-                return;
-            }
+            Class<? extends Day> clazz = (Class<? extends Day>) Class
+                    .forName("com.coehlrich.adventofcode.day" + dayInt + ".Main");
+            Day day = clazz.getConstructor().newInstance();
 
             long time = System.currentTimeMillis();
-            Result result = day.get().execute(input);
+            Result result = day.execute(input);
             long timeTaken = System.currentTimeMillis() - time;
+
             System.out.println("Part 1 answer: " + result.part1());
             System.out.println("Part 2 answer: " + result.part2());
             System.out.println("Executed in " + timeTaken + "ms");
+        } catch (ClassNotFoundException e) {
+            System.out.println("Day " + dayInt + " is not added yet.");
         } catch (OptionException e) {
             System.out.println(e.getMessage());
         } catch (Exception e) {

@@ -8,11 +8,6 @@ import com.coehlrich.adventofcode.Result;
 public class Main implements Day {
 
     @Override
-    public int day() {
-        return 2;
-    }
-
-    @Override
     public Result execute(String input) {
         Match[] matches = input.lines().map((line) -> new Match(
                 switch (line.charAt(0)) {
