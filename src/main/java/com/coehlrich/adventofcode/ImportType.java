@@ -20,13 +20,19 @@ public enum ImportType {
     }),
     SESSION((day, string) -> {
         try {
-            HttpRequest request = HttpRequest.newBuilder(new URI("https://adventofcode.com/2022/day/" + day + "/input"))
-                    .header("User-Agent",
-                            "coehlrich-AOC-Input-Downloader (https://github.com/coehlrich/adventofcode-year2022/)")
-                    .header("Cookie", "session=" + string)
-                    .build();
-
-            return Util.HTTP_CLIENT.send(request, BodyHandlers.ofString()).body();
+            Path path = Path.of("inputs/day" + day + ".txt");
+            if (!Files.exists(path)) {
+                Files.createDirectories(path.getParent());
+                Files.createFile(path);
+                HttpRequest request = HttpRequest
+                        .newBuilder(new URI("https://adventofcode.com/2022/day/" + day + "/input"))
+                        .header("User-Agent",
+                                "coehlrich-AOC-Input-Downloader (https://github.com/coehlrich/adventofcode-year2022/)")
+                        .header("Cookie", "session=" + string)
+                        .build();
+                Util.HTTP_CLIENT.send(request, BodyHandlers.ofFile(path));
+            }
+            return Files.readString(path);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
