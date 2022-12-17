@@ -85,7 +85,7 @@ public class Main implements Day {
         for (long i = 0; i < (part2 ? 100_000_000_000l : 2022l); i++) {
             if (part2) {
                 Value newState = new Value(dirI, rows.size());
-                Value value = cache(states, state, newState, 1000, i);
+                Value value = cache(states, state, newState, 10, i);
                 if (value.dir() == -1) {
                     return value.score();
                 }
@@ -196,7 +196,7 @@ public class Main implements Day {
                     score += newValue.score();
 
                     Value newSubValue = new Value(newValue.dir(), score);
-                    Value value = cache(subCache, subPrev, newSubValue, count * 1000l, i);
+                    Value value = cache(subCache, subPrev, newSubValue, count == 10 ? 1000 : count * 1000l, i);
                     if (value.dir() == -1) {
                         return value;
                     }
