@@ -83,7 +83,27 @@ public class Main implements Day {
         Map<State, Value> states = new HashMap<>();
 
 //        for (long i = 0; i < (part2 ? 1000000000000l : 2022l); i++) {
-        for (long i = 0; i < (part2 ? 100_000_0l : 2022l); i++) {
+        for (long i = 0; i < (part2 ? 100_000_000_000l : 2022l); i++) {
+            if (i % 1000 == 0 && i != 0) {
+                State newState = new State(shapesI, dirI);
+                states.put(s1000.state(), new Value(newState, rows.size() - s1000.score()));
+                s1000 = new Value(newState, rows.size());
+
+                if (part2 && states.containsKey(s1000.state())) {
+                    long score = rows.size();
+                    while (i < 1_000_000_000_000l) {
+                        if (i % 1_000_000_000_0l == 0) {
+                            System.out.println(i);
+                        }
+                        Value newValue = states.get(s1000.state());
+//                        System.out.println(newValue);
+                        i += 1000;
+                        s1000 = newValue;
+                        score += s1000.score();
+                    }
+                    return score;
+                }
+            }
             boolean[][] shape = shapes.get(shapesI);
             shapesI++;
             shapesI %= shapes.size();
@@ -153,29 +173,6 @@ public class Main implements Day {
                 }
             }
 
-            if (i % 1000 == 0 && i != 0) {
-                State newState = new State(shapesI, dirI);
-                if (i > 1000) {
-                    states.put(s1000.state(), new Value(newState, rows.size() - s1000.score()));
-                }
-                s1000 = new Value(newState, rows.size());
-
-                if (part2 && states.containsKey(s1000.state())) {
-                    long score = rows.size();
-                    while (i < 1_000_000_000_000l) {
-                        if (i % 1_000_000_000_0l == 0) {
-                            System.out.println(i);
-                        }
-                        Value newValue = states.get(s1000.state());
-//                        System.out.println(newValue);
-                        i += 1000;
-                        s1000 = newValue;
-                        score += s1000.score();
-                    }
-                    return score - 1l; // off by one error
-                }
-            }
-
 //            if (i < 10) {
 //                System.out.println();
 //                for (int j = rows.size() - 1; j >= 0; j--) {
@@ -193,7 +190,7 @@ public class Main implements Day {
 //                loop = i;
 //            }
         }
-        System.out.println(states.size());
+//        System.out.println(states.size());
         return rows.size();
     }
 
