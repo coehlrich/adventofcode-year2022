@@ -196,7 +196,7 @@ public class Main implements Day {
                     score += newValue.score();
 
                     Value newSubValue = new Value(newValue.dir(), score);
-                    Value value = cache(subCache, subPrev, newSubValue, count == 10 ? 1000 : count * 1000l, i);
+                    Value value = cache(subCache, subPrev, newSubValue, count == 10 ? 100 : count * 100l, i);
                     if (value.dir() == -1) {
                         return value;
                     }
