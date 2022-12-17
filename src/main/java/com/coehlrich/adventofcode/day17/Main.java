@@ -1,16 +1,15 @@
 package com.coehlrich.adventofcode.day17;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import com.coehlrich.adventofcode.Day;
 import com.coehlrich.adventofcode.Result;
 
-public class Main implements Day {
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
-    private int loop = 0;
+public class Main implements Day {
 
     @Override
     public Result execute(String input) {
@@ -79,30 +78,18 @@ public class Main implements Day {
         int shapesI = 0;
         int dirI = 0;
 //        int maxDir = 0;
-        Value s1000 = new Value(new State(0, 0), 0);
-        Map<State, Value> states = new HashMap<>();
+        Value state = new Value(0, 0);
+        Int2ObjectMap<Value> states = new Int2ObjectOpenHashMap<>();
 
 //        for (long i = 0; i < (part2 ? 1000000000000l : 2022l); i++) {
         for (long i = 0; i < (part2 ? 100_000_000_000l : 2022l); i++) {
-            if (i % 1000 == 0 && i != 0) {
-                State newState = new State(shapesI, dirI);
-                states.put(s1000.state(), new Value(newState, rows.size() - s1000.score()));
-                s1000 = new Value(newState, rows.size());
-
-                if (part2 && states.containsKey(s1000.state())) {
-                    long score = rows.size();
-                    while (i < 1_000_000_000_000l) {
-                        if (i % 1_000_000_000_0l == 0) {
-                            System.out.println(i);
-                        }
-                        Value newValue = states.get(s1000.state());
-//                        System.out.println(newValue);
-                        i += 1000;
-                        s1000 = newValue;
-                        score += s1000.score();
-                    }
-                    return score;
+            if (part2) {
+                Value newState = new Value(dirI, rows.size());
+                Value value = cache(states, state, newState, 1000, i);
+                if (value.dir() == -1) {
+                    return value.score();
                 }
+                state = value;
             }
             boolean[][] shape = shapes.get(shapesI);
             shapesI++;
@@ -192,6 +179,36 @@ public class Main implements Day {
         }
 //        System.out.println(states.size());
         return rows.size();
+    }
+
+    private Value cache(Int2ObjectMap<Value> cache, Value previous, Value newValue, long count, long i) {
+        if (i % count == 0 && i != 0) {
+            cache.put(previous.dir(), new Value(newValue.dir(), newValue.score() - previous.score()));
+
+            if (cache.containsKey(newValue.dir())) {
+                long score = newValue.score();
+                Value subPrev = new Value(0, 0);
+                Int2ObjectMap<Value> subCache = new Int2ObjectOpenHashMap<>();
+                while (i < 1_000_000_000_000l) {
+                    newValue = cache.get(newValue.dir());
+//                    System.out.println(newValue);
+                    i += count;
+                    score += newValue.score();
+
+                    Value newSubValue = new Value(newValue.dir(), score);
+                    Value value = cache(subCache, subPrev, newSubValue, count * 1000l, i);
+                    if (value.dir() == -1) {
+                        return value;
+                    }
+                    subPrev = value;
+
+                    previous = newValue;
+                }
+                return new Value(-1, score);
+            }
+            return newValue;
+        }
+        return previous;
     }
 
     private boolean fits(boolean[] from, boolean[] into, int x) {

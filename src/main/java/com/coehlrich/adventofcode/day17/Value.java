@@ -1,5 +1,5 @@
 package com.coehlrich.adventofcode.day17;
 
-public record Value(State state, int score) {
+public record Value(int dir, long score) {
 
 }
