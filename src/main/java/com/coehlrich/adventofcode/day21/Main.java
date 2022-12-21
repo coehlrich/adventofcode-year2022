@@ -86,7 +86,7 @@ public class Main implements Day {
                 if (firstHasHuman) {
                     value = result + other;
                 } else {
-                    value = result - other;
+                    value = other - result;
                 }
             } else if (monkey instanceof MultiplicationMonkey) {
 //                if (result % other != 0) {
@@ -97,7 +97,7 @@ public class Main implements Day {
                 if (firstHasHuman) {
                     value = result * other;
                 } else {
-                    value = result / other;
+                    value = other / result;
                 }
             }
 
