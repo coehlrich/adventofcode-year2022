@@ -43,10 +43,14 @@ public class Main implements Day {
             oMonkey = second;
         }
 
-        return new Result(part1, Math.round(reverse(oMonkey, map, other)));
+        long part2 = reverse(oMonkey, map, other);
+
+        System.out.println(second.result(map, part2));
+
+        return new Result(part1, reverse(oMonkey, map, other));
     }
 
-    private double reverse(Monkey monkey, Map<String, Monkey> map, double result) {
+    private long reverse(Monkey monkey, Map<String, Monkey> map, long result) {
         String first = monkey.first();
         String second = monkey.second();
 
@@ -75,18 +79,26 @@ public class Main implements Day {
                 other = firstM.result(map, -1);
             }
 
-            double value = 0l;
+            long value = 0l;
             if (monkey instanceof AddMonkey) {
                 value = result - other;
             } else if (monkey instanceof SubtractionMonkey) {
-                value = result + other;
+                if (firstHasHuman) {
+                    value = result + other;
+                } else {
+                    value = result - other;
+                }
             } else if (monkey instanceof MultiplicationMonkey) {
 //                if (result % other != 0) {
-//                    throw new RuntimeException(result + " " + other);
+//                    System.out.println(result + " " + other);
 //                }
                 value = result / other;
             } else if (monkey instanceof DivisionMonkey) {
-                value = result * other;
+                if (firstHasHuman) {
+                    value = result * other;
+                } else {
+                    value = result / other;
+                }
             }
 
             Monkey hasH = firstHasHuman ? firstM : secondM;
