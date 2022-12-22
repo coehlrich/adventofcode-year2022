@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.stream.Stream;
 
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
@@ -91,43 +92,44 @@ public enum Direction {
                     directions.put(moved, current);
 
                     Side newSide = Side.DOWN;
-                    boolean inverted = false;
+                    Axis inverted = null;
                     for (PeekingIterator<Direction> iterator = Iterators.peekingIterator(current.iterator()); iterator
                             .hasNext();) {
                         Direction direction = iterator.next();
-                        if (iterator.hasNext() && iterator.peek() == direction) {
-                            int amount = 1;
-                            while (iterator.hasNext() && iterator.peek() == direction) {
-                                amount++;
-                                iterator.next();
-                            }
-                            if (amount >= 2 && !newSide.onHorizontalDirection()) {
-                                inverted = true;
-                            }
-                            newSide = switch (direction) {
-                                case UP ->
-                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? amount : -amount)
-                                            : newSide.rotateX(-amount);
-                                case DOWN ->
-                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? -amount : amount)
-                                            : newSide.rotateX(amount);
-                                case LEFT ->
-                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? -amount : amount)
-                                            : newSide.rotateZ(amount);
-                                case RIGHT ->
-                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? amount : -amount)
-                                            : newSide.rotateZ(-amount);
+                        int amount = 1;
+                        while (iterator.hasNext() && iterator.peek() == direction) {
+                            amount++;
+                            iterator.next();
+                        }
+                        if (amount >= 2 && !newSide.onHorizontalDirection()) {
+                            inverted = switch (direction) {
+                                case LEFT, RIGHT -> Axis.X;
+                                case UP, DOWN -> Axis.Z;
                             };
+                        }
+
+                        if (newSide.onHorizontalDirection()) {
+                            Direction positive = switch (newSide) {
+                                case FORWARD -> Direction.RIGHT;
+                                case RIGHT -> Direction.DOWN;
+                                case BACK -> Direction.LEFT;
+                                case LEFT -> Direction.UP;
+                                default -> throw new IllegalArgumentException("Unexpected value: " + newSide);
+                            };
+
+                            if (inverted != null && inverted.directions.contains(positive)) {
+                                positive = positive.opposite();
+                            }
+
+                            int count = positive == direction ? 1 : -1;
+                            count *= amount;
+                            newSide = newSide.rotateY(count);
                         } else {
                             newSide = switch (direction) {
-                                case UP ->
-                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? -1 : 1) : Side.FORWARD;
-                                case DOWN ->
-                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? 1 : -1) : Side.BACK;
-                                case LEFT ->
-                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? -1 : 1) : Side.LEFT;
-                                case RIGHT ->
-                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? 1 : -1) : Side.RIGHT;
+                                case UP -> amount == 1 ? Side.FORWARD : newSide.rotateX(-amount);
+                                case DOWN -> amount == 1 ? Side.BACK : newSide.rotateX(amount);
+                                case LEFT -> amount == 1 ? Side.LEFT : newSide.rotateZ(amount);
+                                case RIGHT -> amount == 1 ? Side.RIGHT : newSide.rotateZ(-amount);
                             };
                         }
                     }
@@ -136,6 +138,11 @@ public enum Direction {
                 }
             }
         }
+
+        for (Side side : Stream.of(Side.values()).filter(Side::onHorizontalDirection).toArray(Side[]::new)) {
+
+        }
+
         System.out.println(sides);
     }
 
@@ -371,5 +378,14 @@ public enum Direction {
             }
         }
         return new PosDir(point, direction);
+    }
+
+    public Direction opposite() {
+        return switch (this) {
+            case UP -> DOWN;
+            case LEFT -> RIGHT;
+            case RIGHT -> LEFT;
+            case DOWN -> UP;
+        };
     }
 }
