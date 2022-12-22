@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
+import com.google.common.collect.Iterators;
+import com.google.common.collect.PeekingIterator;
+
 public enum Direction {
     RIGHT(1, 0),
     DOWN(0, 1),
@@ -57,7 +60,7 @@ public enum Direction {
 
     public static void update(int[][] map) {
         Map<Point, Side> sides = new HashMap<>();
-        Map<Point, Direction> directions = new HashMap<>();
+        Map<Point, List<Direction>> directions = new HashMap<>();
         boolean sample = map.length % 50 != 0;
         int sideSize = sample ? 4 : 50;
         int maxX = map[0].length / sideSize;
@@ -68,7 +71,7 @@ public enum Direction {
 
         Point down = new Point(minX, 0);
         sides.put(down, Side.DOWN);
-        directions.put(down, Direction.UP);
+        directions.put(down, List.of());
         Queue<Point> queue = new ArrayDeque<>();
         queue.add(down);
 
@@ -83,10 +86,52 @@ public enum Direction {
                         || map[moved.y() * sideSize][moved.x() * sideSize] == -1) {
                     edges.add(new PosDir(point, dir));
                 } else if (!sides.containsKey(moved)) {
-                    Direction current = directions.get(point);
-                    current = dir.relative(current);
+                    List<Direction> current = new ArrayList<>(directions.get(point));
+                    current.add(dir);
                     directions.put(moved, current);
-                    sides.put(moved, side.get(current));
+
+                    Side newSide = Side.DOWN;
+                    boolean inverted = false;
+                    for (PeekingIterator<Direction> iterator = Iterators.peekingIterator(current.iterator()); iterator
+                            .hasNext();) {
+                        Direction direction = iterator.next();
+                        if (iterator.hasNext() && iterator.peek() == direction) {
+                            int amount = 1;
+                            while (iterator.hasNext() && iterator.peek() == direction) {
+                                amount++;
+                                iterator.next();
+                            }
+                            if (amount >= 2 && !newSide.onHorizontalDirection()) {
+                                inverted = true;
+                            }
+                            newSide = switch (direction) {
+                                case UP ->
+                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? amount : -amount)
+                                            : newSide.rotateX(-amount);
+                                case DOWN ->
+                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? -amount : amount)
+                                            : newSide.rotateX(amount);
+                                case LEFT ->
+                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? -amount : amount)
+                                            : newSide.rotateZ(amount);
+                                case RIGHT ->
+                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? amount : -amount)
+                                            : newSide.rotateZ(-amount);
+                            };
+                        } else {
+                            newSide = switch (direction) {
+                                case UP ->
+                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? -1 : 1) : Side.FORWARD;
+                                case DOWN ->
+                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? 1 : -1) : Side.BACK;
+                                case LEFT ->
+                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? -1 : 1) : Side.LEFT;
+                                case RIGHT ->
+                                    newSide.onHorizontalDirection() ? newSide.rotateY(inverted ? 1 : -1) : Side.RIGHT;
+                            };
+                        }
+                    }
+                    sides.put(moved, newSide);
                     queue.add(moved);
                 }
             }
