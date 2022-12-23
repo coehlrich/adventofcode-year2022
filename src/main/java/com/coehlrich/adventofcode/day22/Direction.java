@@ -99,7 +99,7 @@ public enum Direction {
         Map<PosDir, PosDir> connected = new HashMap<>();
         Map<PosDir, Point> connectedPoints = new HashMap<>();
 
-        System.out.println(edges);
+//        System.out.println(edges);
         for (PosDir edge : edges) {
             Point pos = edge.point();
             Direction direction = edge.direction();
@@ -109,7 +109,7 @@ public enum Direction {
             Point otherPos = sides.entrySet().stream().filter((entry) -> entry.getValue() == other)
                     .map(Map.Entry::getKey).findFirst().get();
             connectedPoints.put(edge, otherPos);
-            System.out.println(edge + ": " + otherPos);
+//            System.out.println(edge + ": " + otherPos);
         }
 
         for (PosDir edge : edges) {
@@ -121,6 +121,14 @@ public enum Direction {
                     .map(Map.Entry::getKey)
                     .map(PosDir::direction)
                     .findFirst().get();
+
+            if (!sample) {
+//                if (pos.equals(new Point(0, 3)) && direction == Direction.RIGHT) {
+//                    direction = Direction.LEFT;
+//                } else if (otherPos.equals(new Point(0, 3)) && otherDirection == Direction.RIGHT) {
+//                    otherDirection = Direction.LEFT;
+//                }
+            }
             connected.put(new PosDir(pos, direction), new PosDir(otherPos, otherDirection));
 
             List<Direction> usedDirections = new ArrayList<>(directions.get(pos));
@@ -156,6 +164,27 @@ public enum Direction {
                 flip = !flip;
             }
 
+            if (sample) {
+                flip = (side == Side.DOWN && otherSide == Side.FORWARD)
+                        || (otherSide == Side.DOWN && side == Side.FORWARD)
+                        || (side == Side.DOWN && otherSide == Side.RIGHT)
+                        || (otherSide == Side.DOWN && side == Side.RIGHT)
+                        || (side == Side.FORWARD && otherSide == Side.RIGHT)
+                        || (otherSide == Side.FORWARD && side == Side.RIGHT)
+                        || (side == Side.FORWARD && otherSide == Side.UP)
+                        || (otherSide == Side.FORWARD && side == Side.UP)
+                        || (side == Side.LEFT && otherSide == Side.UP)
+                        || (otherSide == Side.LEFT && side == Side.UP)
+                        || (side == Side.BACK && otherSide == Side.RIGHT)
+                        || (otherSide == Side.BACK && side == Side.RIGHT);
+            } else {
+                flip = (side == Side.DOWN && otherSide == Side.LEFT)
+                        || (otherSide == Side.DOWN && side == Side.LEFT)
+                        || (side == Side.RIGHT && otherSide == Side.FORWARD)
+                        || (otherSide == Side.RIGHT && side == Side.FORWARD)
+                        || (side == Side.RIGHT && otherSide == Side.UP)
+                        || (otherSide == Side.RIGHT && side == Side.UP);
+            }
             boolean finalFlip = flip;
             Point finalStart = start;
 
@@ -174,10 +203,10 @@ public enum Direction {
             };
 
             Direction.edges.put(edge, new ConvertEdge(conversion, otherDirection.opposite()));
-            System.out.println(edge + ": " + otherPos + " (" + otherDirection + ")");
+//            System.out.println(edge + ": " + otherPos + " (" + otherDirection + ")");
         }
 
-        System.out.println(sides);
+//        System.out.println(sides);
     }
 
     private static DirectionResult getFromDirections(List<Direction> directions) {
@@ -186,6 +215,7 @@ public enum Direction {
         Direction up = null;
         List<Side> sides = new ArrayList<>();
         sides.add(newSide);
+        boolean flipped = false;
         for (PeekingIterator<Direction> iterator = Iterators.peekingIterator(directions.iterator()); iterator
                 .hasNext();) {
             Direction direction = iterator.next();
@@ -195,6 +225,7 @@ public enum Direction {
                 iterator.next();
             }
             if (amount >= 2 && !newSide.onHorizontalDirection()) {
+                flipped = !flipped;
                 Axis inversion = switch (direction) {
                     case LEFT, RIGHT -> Axis.X;
                     case UP, DOWN -> Axis.Z;
@@ -225,11 +256,15 @@ public enum Direction {
                 if (inverted.stream().map(Axis::getDirections).flatMap(List::stream).toList().contains(top)) {
                     top = top.opposite();
                 }
+                if (flipped) {
+                    top = top.opposite();
+                }
 
                 if (top == direction || top.opposite() == direction) {
                     newSide = top == direction ? Side.UP : Side.DOWN;
                     sides.add(newSide);
                     if (top == direction) {
+                        flipped = !flipped;
                         Axis inversion = switch (top) {
                             case UP, DOWN -> Axis.Z;
                             case LEFT, RIGHT -> Axis.X;
@@ -248,11 +283,11 @@ public enum Direction {
                     if (newSide == Side.BACK || newSide == Side.FORWARD) {
                         if (visited.stream().filter((side) -> side == Side.BACK || side == Side.FORWARD).count()
                                 % 2 == 1) {
-                            if (inverted.contains(Axis.Z)) {
-                                inverted.remove(Axis.Z);
-                            } else {
-                                inverted.add(Axis.Z);
-                            }
+//                            if (inverted.contains(Axis.X)) {
+//                                inverted.remove(Axis.X);
+//                            } else {
+//                                inverted.add(Axis.X);
+//                            }
                         }
                     }
                     newSide = visited.get(visited.size() - 1);
@@ -318,7 +353,7 @@ public enum Direction {
                                         direction = Direction.RIGHT;
                                     }
                                     case UP -> {
-                                        point = new Point(sideSize, 2 * sideSize + x);
+                                        point = new Point(sideSize, sideSize + x);
                                         direction = Direction.RIGHT;
                                     }
                                     default -> throw new IllegalArgumentException("Unexpected value: " + this);
@@ -331,11 +366,11 @@ public enum Direction {
                                         direction = Direction.DOWN;
                                     }
                                     case DOWN -> {
-                                        point = new Point(sideSize * 2, sideSize - x - 1);
-                                        direction = Direction.LEFT;
+                                        point = new Point(sideSize * 2 + x, 0);
+                                        direction = Direction.DOWN;
                                     }
                                     case RIGHT -> {
-                                        point = new Point(sideSize + y, sideSize * 2);
+                                        point = new Point(sideSize + y, sideSize * 3 - 1);
                                         direction = Direction.UP;
                                     }
                                     default -> throw new IllegalArgumentException("Unexpected value: " + this);
@@ -374,7 +409,7 @@ public enum Direction {
                             case 2 -> {
                                 switch (this) {
                                     case RIGHT -> {
-                                        point = new Point(sideSize * 2 - 1, sideSize - y - 1);
+                                        point = new Point(sideSize * 3 - 1, sideSize - y - 1);
                                         direction = Direction.LEFT;
                                     }
                                     case DOWN -> {
@@ -391,7 +426,7 @@ public enum Direction {
                             case 0 -> {
                                 switch (this) {
                                     case UP -> {
-                                        point = new Point(sideSize - x - 1, sideSize * 4 - 1);
+                                        point = new Point(x, sideSize * 4 - 1);
                                         direction = Direction.UP;
                                     }
                                     case RIGHT -> {
