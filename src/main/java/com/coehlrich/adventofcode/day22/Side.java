@@ -1,5 +1,8 @@
 package com.coehlrich.adventofcode.day22;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public enum Side {
     DOWN,
     UP,
@@ -61,7 +64,8 @@ public enum Side {
 //        };
 //    }
 
-    public Side rotateX(int amount) {
+    public List<Side> rotateX(int amount) {
+        List<Side> sides = new ArrayList<>();
         Side side = this;
         if (amount > 0) {
             for (int i = 0; i < amount; i++) {
@@ -72,6 +76,7 @@ public enum Side {
                     case FORWARD -> DOWN;
                     default -> side;
                 };
+                sides.add(side);
             }
         } else if (amount < 0) {
             for (int i = 0; i < -amount; i++) {
@@ -82,12 +87,14 @@ public enum Side {
                     case FORWARD -> UP;
                     default -> side;
                 };
+                sides.add(side);
             }
         }
-        return side;
+        return sides;
     }
 
-    public Side rotateY(int amount) {
+    public List<Side> rotateY(int amount) {
+        List<Side> sides = new ArrayList<>();
         Side side = this;
         if (amount > 0) {
             for (int i = 0; i < amount; i++) {
@@ -98,6 +105,7 @@ public enum Side {
                     case RIGHT -> BACK;
                     default -> side;
                 };
+                sides.add(side);
             }
         } else if (amount < 0) {
             for (int i = 0; i < -amount; i++) {
@@ -108,12 +116,14 @@ public enum Side {
                     case RIGHT -> FORWARD;
                     default -> side;
                 };
+                sides.add(side);
             }
         }
-        return side;
+        return sides;
     }
 
-    public Side rotateZ(int amount) {
+    public List<Side> rotateZ(int amount) {
+        List<Side> sides = new ArrayList<>();
         Side side = this;
         if (amount > 0) {
             for (int i = 0; i < amount; i++) {
@@ -124,6 +134,7 @@ public enum Side {
                     case LEFT -> UP;
                     default -> side;
                 };
+                sides.add(side);
             }
         } else if (amount < 0) {
             for (int i = 0; i < -amount; i++) {
@@ -134,9 +145,10 @@ public enum Side {
                     case LEFT -> DOWN;
                     default -> side;
                 };
+                sides.add(side);
             }
         }
-        return side;
+        return sides;
     }
 
     public boolean onHorizontalDirection() {

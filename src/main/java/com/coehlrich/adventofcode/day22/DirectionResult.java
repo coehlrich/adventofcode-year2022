@@ -1,5 +1,8 @@
 package com.coehlrich.adventofcode.day22;
 
-public record DirectionResult(Side side, Axis axis) {
+import java.util.EnumSet;
+import java.util.List;
+
+public record DirectionResult(List<Side> sides, Side side, EnumSet<Axis> axis) {
 
 }

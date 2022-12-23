@@ -18,4 +18,8 @@ public enum Axis {
             case UP, DOWN -> Z;
         };
     }
+
+    public List<Direction> getDirections() {
+        return directions;
+    }
 }
