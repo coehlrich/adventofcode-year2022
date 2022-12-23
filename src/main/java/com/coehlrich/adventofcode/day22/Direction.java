@@ -136,7 +136,13 @@ public enum Direction {
                 case RIGHT -> new Point(start.x() + sideSize - 1, start.y());
             };
 
-            boolean flip = false;
+            Side side = sides.get(pos);
+            Side otherSide = sides.get(otherPos);
+
+            boolean flip = (side == Side.FORWARD && otherSide == Side.RIGHT)
+                    || (side == Side.RIGHT && otherSide == Side.FORWARD)
+                    || (side == Side.BACK && otherSide == Side.LEFT)
+                    || (side == Side.LEFT && otherSide == Side.BACK);
 
             if (inverted != null && !inverted.directions.contains(direction)) {
                 flip = !flip;
@@ -163,7 +169,7 @@ public enum Direction {
                 }
             };
 
-            Direction.edges.put(edge, new ConvertEdge(conversion, otherDirection));
+            Direction.edges.put(edge, new ConvertEdge(conversion, otherDirection.opposite()));
             System.out.println(edge + ": " + otherPos + " (" + otherDirection + ")");
         }
 
@@ -269,7 +275,7 @@ public enum Direction {
             int sideSize = sample ? 4 : 50;
             int x = point.x() % sideSize;
             int y = point.y() % sideSize;
-            if (!sample) {
+            if (false) {
                 switch (pos.x() / sideSize) {
                     case 0 -> {
                         switch (pos.y() / sideSize) {
