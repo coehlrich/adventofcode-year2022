@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.stream.Stream;
+import java.util.function.Function;
 
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
@@ -20,7 +20,7 @@ public enum Direction {
     public final int x;
     public final int y;
 
-    public static Map<Map.Entry<Point, Direction>, ConvertEdge> edges = null;
+    public static Map<PosDir, ConvertEdge> edges = new HashMap<>();
 
     private Direction(int x, int y) {
         this.x = x;
@@ -82,7 +82,6 @@ public enum Direction {
             Point point = queue.poll();
             for (Direction dir : Direction.values()) {
                 Point moved = dir.move(point);
-                Side side = sides.get(point);
                 if (moved.x() < 0 || moved.x() >= maxX || moved.y() < 0 || moved.y() >= maxY
                         || map[moved.y() * sideSize][moved.x() * sideSize] == -1) {
                     edges.add(new PosDir(point, dir));
@@ -91,59 +90,160 @@ public enum Direction {
                     current.add(dir);
                     directions.put(moved, current);
 
-                    Side newSide = Side.DOWN;
-                    Axis inverted = null;
-                    for (PeekingIterator<Direction> iterator = Iterators.peekingIterator(current.iterator()); iterator
-                            .hasNext();) {
-                        Direction direction = iterator.next();
-                        int amount = 1;
-                        while (iterator.hasNext() && iterator.peek() == direction) {
-                            amount++;
-                            iterator.next();
-                        }
-                        if (amount >= 2 && !newSide.onHorizontalDirection()) {
-                            inverted = switch (direction) {
-                                case LEFT, RIGHT -> Axis.X;
-                                case UP, DOWN -> Axis.Z;
-                            };
-                        }
-
-                        if (newSide.onHorizontalDirection()) {
-                            Direction positive = switch (newSide) {
-                                case FORWARD -> Direction.RIGHT;
-                                case RIGHT -> Direction.DOWN;
-                                case BACK -> Direction.LEFT;
-                                case LEFT -> Direction.UP;
-                                default -> throw new IllegalArgumentException("Unexpected value: " + newSide);
-                            };
-
-                            if (inverted != null && inverted.directions.contains(positive)) {
-                                positive = positive.opposite();
-                            }
-
-                            int count = positive == direction ? 1 : -1;
-                            count *= amount;
-                            newSide = newSide.rotateY(count);
-                        } else {
-                            newSide = switch (direction) {
-                                case UP -> amount == 1 ? Side.FORWARD : newSide.rotateX(-amount);
-                                case DOWN -> amount == 1 ? Side.BACK : newSide.rotateX(amount);
-                                case LEFT -> amount == 1 ? Side.LEFT : newSide.rotateZ(amount);
-                                case RIGHT -> amount == 1 ? Side.RIGHT : newSide.rotateZ(-amount);
-                            };
-                        }
-                    }
-                    sides.put(moved, newSide);
+                    sides.put(moved, getFromDirections(current).side());
                     queue.add(moved);
                 }
             }
         }
+        Map<PosDir, PosDir> connected = new HashMap<>();
+        Map<PosDir, Point> connectedPoints = new HashMap<>();
 
-        for (Side side : Stream.of(Side.values()).filter(Side::onHorizontalDirection).toArray(Side[]::new)) {
+        for (PosDir edge : edges) {
+            Point pos = edge.point();
+            Direction direction = edge.direction();
+            List<Direction> usedDirections = new ArrayList<>(directions.get(pos));
+            usedDirections.add(direction);
+            Side other = getFromDirections(usedDirections).side();
+            Point otherPos = sides.entrySet().stream().filter((entry) -> entry.getValue() == other)
+                    .map(Map.Entry::getKey).findFirst().get();
+            connectedPoints.put(edge, otherPos);
+//            System.out.println(edge + ": " + otherPos);
+        }
 
+        for (PosDir edge : edges) {
+            Point pos = edge.point();
+            Direction direction = edge.direction();
+            Point otherPos = connectedPoints.get(edge);
+            Direction otherDirection = connectedPoints.entrySet().stream()
+                    .filter((entry) -> entry.getValue().equals(pos) && entry.getKey().point().equals(otherPos))
+                    .map(Map.Entry::getKey)
+                    .map(PosDir::direction)
+                    .findFirst().get();
+            connected.put(new PosDir(pos, direction), new PosDir(otherPos, otherDirection));
+
+            List<Direction> usedDirections = new ArrayList<>(directions.get(pos));
+            usedDirections.add(direction);
+            Axis inverted = getFromDirections(usedDirections).axis();
+
+            List<Direction> otherUsedDirections = new ArrayList<>(directions.get(otherPos));
+            otherUsedDirections.add(otherDirection);
+            Axis otherInverted = getFromDirections(otherUsedDirections).axis();
+
+            Point start = new Point(otherPos.x() * sideSize, otherPos.y() * sideSize);
+            start = switch (otherDirection) {
+                case UP, LEFT -> start;
+                case DOWN -> new Point(start.x(), start.y() + sideSize - 1);
+                case RIGHT -> new Point(start.x() + sideSize - 1, start.y());
+            };
+
+            boolean flip = false;
+
+            if (inverted != null && !inverted.directions.contains(direction)) {
+                flip = !flip;
+            }
+
+            if (otherInverted != null && !otherInverted.directions.contains(otherDirection)) {
+                flip = !flip;
+            }
+
+            boolean finalFlip = flip;
+            Point finalStart = start;
+
+            Function<Point, Point> conversion = (point) -> {
+                int x = switch (Axis.get(direction)) {
+                    case Z -> point.x();
+                    case X -> point.y();
+                } % sideSize;
+
+                int result = finalFlip ? sideSize - x - 1 : x;
+                if (Axis.get(otherDirection) == Axis.X) {
+                    return new Point(finalStart.x(), finalStart.y() + result);
+                } else {
+                    return new Point(finalStart.x() + result, finalStart.y());
+                }
+            };
+
+            Direction.edges.put(edge, new ConvertEdge(conversion, otherDirection));
+            System.out.println(edge + ": " + otherPos + " (" + otherDirection + ")");
         }
 
         System.out.println(sides);
+    }
+
+    private static DirectionResult getFromDirections(List<Direction> directions) {
+        Side newSide = Side.DOWN;
+        Axis inverted = null;
+        Direction up = null;
+        for (PeekingIterator<Direction> iterator = Iterators.peekingIterator(directions.iterator()); iterator
+                .hasNext();) {
+            Direction direction = iterator.next();
+            int amount = 1;
+            while (iterator.hasNext() && iterator.peek() == direction) {
+                amount++;
+                iterator.next();
+            }
+            if (amount >= 2 && !newSide.onHorizontalDirection()) {
+                inverted = switch (direction) {
+                    case LEFT, RIGHT -> Axis.X;
+                    case UP, DOWN -> Axis.Z;
+                };
+            }
+
+            if (newSide.onHorizontalDirection()) {
+                Direction positive = switch (newSide) {
+                    case FORWARD -> Direction.RIGHT;
+                    case RIGHT -> Direction.DOWN;
+                    case BACK -> Direction.LEFT;
+                    case LEFT -> Direction.UP;
+                    default -> throw new IllegalArgumentException("Unexpected value: " + newSide);
+                };
+
+                if (inverted != null && inverted.directions.contains(positive)) {
+                    positive = positive.opposite();
+                }
+
+                Direction top = up;
+
+                if (inverted != null && inverted.directions.contains(top)) {
+                    top = top.opposite();
+                }
+
+                if (top == direction || top.opposite() == direction) {
+                    newSide = top == direction ? Side.UP : Side.DOWN;
+                    if (top == direction) {
+                        inverted = switch (top) {
+                            case UP, DOWN -> Axis.Z;
+                            case LEFT, RIGHT -> Axis.X;
+                        };
+                    }
+                } else {
+                    int count = positive == direction ? 1 : -1;
+                    count *= amount;
+                    newSide = newSide.rotateY(count);
+                }
+            } else {
+                newSide = switch (direction) {
+                    case UP -> amount == 1 ? Side.FORWARD : newSide.rotateX(-amount);
+                    case DOWN -> amount == 1 ? Side.BACK : newSide.rotateX(amount);
+                    case LEFT -> amount == 1 ? Side.LEFT : newSide.rotateZ(amount);
+                    case RIGHT -> amount == 1 ? Side.RIGHT : newSide.rotateZ(-amount);
+                };
+            }
+
+            if (up == null && newSide.onHorizontalDirection()) {
+                up = switch (newSide) {
+                    case FORWARD -> Direction.UP;
+                    case RIGHT -> Direction.RIGHT;
+                    case BACK -> Direction.DOWN;
+                    case LEFT -> Direction.LEFT;
+                    default -> throw new IllegalArgumentException("Unexpected value: " + newSide);
+                };
+            } else if (!newSide.onHorizontalDirection()) {
+                up = null;
+            }
+
+        }
+        return new DirectionResult(newSide, inverted);
     }
 
     public Point move(Point pos) {
@@ -271,110 +371,114 @@ public enum Direction {
                     }
                 }
             } else {
-                switch (pos.x() / sideSize) {
-                    case 0 -> {
-                        switch (pos.y() / sideSize) {
-                            case 1 -> {
-                                switch (this) {
-                                    case UP -> {
-                                        point = new Point(sideSize * 3 - x - 1, 0);
-                                        direction = Direction.DOWN;
-                                    }
-                                    case LEFT -> {
-                                        point = new Point(sideSize * 4 - y - 1, sideSize * 3 - 1);
-                                        direction = Direction.UP;
-                                    }
-                                    case DOWN -> {
-                                        point = new Point(sideSize * 3 - x, sideSize * 3 - 1);
-                                        direction = Direction.UP;
-                                    }
-                                    default -> throw new IllegalArgumentException("Unexpected value: " + this);
-                                }
-                            }
-                        }
-                    }
-                    case 1 -> {
-                        switch (pos.y() / sideSize) {
-                            case 1 -> {
-                                switch (this) {
-                                    case UP -> {
-                                        point = new Point(sideSize * 2, x);
-                                        direction = Direction.RIGHT;
-                                    }
-                                    case DOWN -> {
-                                        point = new Point(sideSize * 2, sideSize * 3 - x - 1);
-                                        direction = Direction.RIGHT;
-                                    }
-                                    default -> throw new IllegalArgumentException("Unexpected value: " + this);
-                                }
-                            }
-                        }
-                    }
-                    case 2 -> {
-                        switch (pos.y() / sideSize) {
-                            case 0 -> {
-                                switch (this) {
-                                    case LEFT -> {
-                                        point = new Point(sideSize * 2 + y, sideSize);
-                                        direction = Direction.DOWN;
-                                    }
-                                    case UP -> {
-                                        point = new Point(sideSize - x - 1, sideSize);
-                                        direction = Direction.DOWN;
-                                    }
-                                    case RIGHT -> {
-                                        point = new Point(sideSize * 4 - 1, sideSize * 3 - y - 1);
-                                        direction = Direction.LEFT;
-                                    }
-                                    default -> throw new IllegalArgumentException("Unexpected value: " + this);
-                                }
-                            }
-                            case 1 -> {
-                                switch (this) {
-                                    case RIGHT -> {
-                                        point = new Point(sideSize * 4 - y - 1, sideSize * 2);
-                                        direction = Direction.DOWN;
-                                    }
-                                    default -> throw new IllegalArgumentException("Unexpected value: " + this);
-                                }
-                            }
-                            case 2 -> {
-                                switch (this) {
-                                    case LEFT -> {
-                                        point = new Point(sideSize * 2 - y - 1, sideSize * 2 - 1);
-                                        direction = Direction.UP;
-                                    }
-                                    case DOWN -> {
-                                        point = new Point(sideSize - x - 1, sideSize * 2 - 1);
-                                        direction = Direction.UP;
-                                    }
-                                    default -> throw new IllegalArgumentException("Unexpected value: " + this);
-                                }
-                            }
-                        }
-                    }
-                    case 3 -> {
-                        switch (pos.y() / sideSize) {
-                            case 2 -> {
-                                switch (this) {
-                                    case UP -> {
-                                        point = new Point(sideSize * 3 - 1, sideSize * 2 - y - 1);
-                                        direction = Direction.LEFT;
-                                    }
-                                    case RIGHT -> {
-                                        point = new Point(sideSize * 3 - 1, sideSize - y - 1);
-                                        direction = Direction.LEFT;
-                                    }
-                                    case DOWN -> {
-                                        point = new Point(0, sideSize * 2 - y - 1);
-                                        direction = Direction.RIGHT;
-                                    }
-                                    default -> throw new IllegalArgumentException("Unexpected value: " + this);
-                                }
-                            }
-                        }
-                    }
-                }
+//                switch (pos.x() / sideSize) {
+//                    case 0 -> {
+//                        switch (pos.y() / sideSize) {
+//                            case 1 -> {
+//                                switch (this) {
+//                                    case UP -> {
+//                                        point = new Point(sideSize * 3 - x - 1, 0);
+//                                        direction = Direction.DOWN;
+//                                    }
+//                                    case LEFT -> {
+//                                        point = new Point(sideSize * 4 - y - 1, sideSize * 3 - 1);
+//                                        direction = Direction.UP;
+//                                    }
+//                                    case DOWN -> {
+//                                        point = new Point(sideSize * 3 - x, sideSize * 3 - 1);
+//                                        direction = Direction.UP;
+//                                    }
+//                                    default -> throw new IllegalArgumentException("Unexpected value: " + this);
+//                                }
+//                            }
+//                        }
+//                    }
+//                    case 1 -> {
+//                        switch (pos.y() / sideSize) {
+//                            case 1 -> {
+//                                switch (this) {
+//                                    case UP -> {
+//                                        point = new Point(sideSize * 2, x);
+//                                        direction = Direction.RIGHT;
+//                                    }
+//                                    case DOWN -> {
+//                                        point = new Point(sideSize * 2, sideSize * 3 - x - 1);
+//                                        direction = Direction.RIGHT;
+//                                    }
+//                                    default -> throw new IllegalArgumentException("Unexpected value: " + this);
+//                                }
+//                            }
+//                        }
+//                    }
+//                    case 2 -> {
+//                        switch (pos.y() / sideSize) {
+//                            case 0 -> {
+//                                switch (this) {
+//                                    case LEFT -> {
+//                                        point = new Point(sideSize * 2 + y, sideSize);
+//                                        direction = Direction.DOWN;
+//                                    }
+//                                    case UP -> {
+//                                        point = new Point(sideSize - x - 1, sideSize);
+//                                        direction = Direction.DOWN;
+//                                    }
+//                                    case RIGHT -> {
+//                                        point = new Point(sideSize * 4 - 1, sideSize * 3 - y - 1);
+//                                        direction = Direction.LEFT;
+//                                    }
+//                                    default -> throw new IllegalArgumentException("Unexpected value: " + this);
+//                                }
+//                            }
+//                            case 1 -> {
+//                                switch (this) {
+//                                    case RIGHT -> {
+//                                        point = new Point(sideSize * 4 - y - 1, sideSize * 2);
+//                                        direction = Direction.DOWN;
+//                                    }
+//                                    default -> throw new IllegalArgumentException("Unexpected value: " + this);
+//                                }
+//                            }
+//                            case 2 -> {
+//                                switch (this) {
+//                                    case LEFT -> {
+//                                        point = new Point(sideSize * 2 - y - 1, sideSize * 2 - 1);
+//                                        direction = Direction.UP;
+//                                    }
+//                                    case DOWN -> {
+//                                        point = new Point(sideSize - x - 1, sideSize * 2 - 1);
+//                                        direction = Direction.UP;
+//                                    }
+//                                    default -> throw new IllegalArgumentException("Unexpected value: " + this);
+//                                }
+//                            }
+//                        }
+//                    }
+//                    case 3 -> {
+//                        switch (pos.y() / sideSize) {
+//                            case 2 -> {
+//                                switch (this) {
+//                                    case UP -> {
+//                                        point = new Point(sideSize * 3 - 1, sideSize * 2 - y - 1);
+//                                        direction = Direction.LEFT;
+//                                    }
+//                                    case RIGHT -> {
+//                                        point = new Point(sideSize * 3 - 1, sideSize - y - 1);
+//                                        direction = Direction.LEFT;
+//                                    }
+//                                    case DOWN -> {
+//                                        point = new Point(0, sideSize * 2 - y - 1);
+//                                        direction = Direction.RIGHT;
+//                                    }
+//                                    default -> throw new IllegalArgumentException("Unexpected value: " + this);
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+
+                ConvertEdge edge = edges.get(new PosDir(new Point(pos.x() / sideSize, pos.y() / sideSize), direction));
+                point = edge.point().apply(pos);
+                direction = edge.direction();
             }
         }
         return new PosDir(point, direction);

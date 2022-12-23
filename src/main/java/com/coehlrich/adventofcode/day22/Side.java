@@ -131,7 +131,7 @@ public enum Side {
                     case RIGHT -> UP;
                     case DOWN -> RIGHT;
                     case UP -> LEFT;
-                    case LEFT -> BACK;
+                    case LEFT -> DOWN;
                     default -> side;
                 };
             }

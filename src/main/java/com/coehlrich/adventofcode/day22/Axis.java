@@ -11,4 +11,11 @@ public enum Axis {
     private Axis(List<Direction> directions) {
         this.directions = directions;
     }
+
+    public static Axis get(Direction direction) {
+        return switch (direction) {
+            case LEFT, RIGHT -> X;
+            case UP, DOWN -> Z;
+        };
+    }
 }
